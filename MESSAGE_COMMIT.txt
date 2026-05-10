@@ -1,0 +1,44 @@
+feat: Auditoría de seguridad completa y reestructuración del sistema
+
+SEGURIDAD:
+- Removidas SECRET_KEY y credenciales hardcodeadas (settings.py)
+- Variables de entorno con archivo .env.example
+- CORS restringido a dominios específicos
+- JWT con rotación de tokens y blacklist
+- Rate limiting (5 req/min anónimo, 100 req/min autenticado)
+- Headers de seguridad (HSTS, X-Frame-Options, XSS filter)
+- Validación de rango en lecturas y pagos
+- Límite de usuarios: máx 2 admins, 2 lecturistas, 2 superadmins
+
+BACKEND:
+- Nuevos modelos: Factura, PeriodoLectura, Pago
+- Campos nuevos en Suscriptor: direccion, telefono, estado_servicio, mes_deuda_continua
+- Campos nuevos en Lectura: lecturista (FK)
+- Campos nuevos en Pago: tipo, metodo_pago, comentario, registrado_por
+- Lógica de facturación: cierre de período genera facturas automáticamente
+- Corte de servicio automático por mora de 3 meses
+- Endpoint dashboard con estadísticas
+- Swagger/OpenAPI docs en /api/docs/
+- Migraciones 0003 y 0004
+
+FRONTEND:
+- Reescritos Login, ModuloAdministrador, ModuloLecturista
+- Servicios API y Auth actualizados con todos los endpoints
+- Diseño responsive con Tailwind CSS
+- Navegación por roles (lecturista/admin)
+
+ARCHIVOS NUEVOS:
+- .env.example (plantilla de variables)
+- SECURITY.md (política de seguridad)
+- requirements.txt
+- reset_all.py (script de reinicio con datos de ejemplo)
+- init_project.py
+- start.bat
+- signals.py (auditoría de usuarios)
+- validators.py (control de límites)
+
+DOCUMENTACIÓN:
+- README.md actualizado con instrucciones completas
+- Swagger API docs
+
+Auditoría remediada: 13 vulnerabilidades (8 críticas, 8 altas, 7 medias)

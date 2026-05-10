@@ -1,87 +1,95 @@
 import { getAuthHeaders } from './auth';
 
-const API_URL = 'http://127.0.0.1:8000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
-export const obtenerSuscriptores = async () => {
-    try {
-        const response = await fetch(`${API_URL}/suscriptores/`, {
-            headers: {
-                ...getAuthHeaders()
-            }
-        });
-        if (!response.ok) throw new Error('Error al obtener datos');
-        return await response.json();
-    } catch (error) {
-        console.error("Error conectando con el Cerebro:", error);
-        return [];
+const handleResponse = async (response: Response) => {
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: 'Error de conexión' }));
+        throw new Error(error.error || error.detail || 'Error en la solicitud');
     }
+    return response.json();
 };
 
-export const crearSuscriptor = async (nombre: string, medidor_id: string) => {
-    try {
-        const response = await fetch(`${API_URL}/suscriptores/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...getAuthHeaders()
-            },
-            body: JSON.stringify({ nombre, medidor_id })
-        });
-        if (!response.ok) throw new Error('Error al crear suscriptor');
-        return await response.json();
-    } catch (error) {
-        console.error("Error conectando con el Cerebro:", error);
-        return null;
-    }
+export const apiFetch = async (
+    endpoint: string,
+    options: RequestInit = {}
+): Promise<any> => {
+    const url = `${API_URL}${endpoint}`;
+
+    const config: RequestInit = {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeaders(),
+            ...options.headers,
+        },
+    };
+
+    const response = await fetch(url, config);
+    return handleResponse(response);
 };
 
-export const obtenerLecturas = async () => {
-    try {
-        const response = await fetch(`${API_URL}/lecturas/`, {
-            headers: {
-                ...getAuthHeaders()
-            }
-        });
-        if (!response.ok) throw new Error('Error al obtener lecturas');
-        return await response.json();
-    } catch (error) {
-        console.error("Error obteniendo lecturas:", error);
-        return [];
-    }
+export const obtenerSuscriptores = () => apiFetch('/suscriptores/');
+
+export const crearSuscriptor = (data: { nombre: string; medidor_id: string; direccion?: string }) =>
+    apiFetch('/suscriptores/', { method: 'POST', body: JSON.stringify(data) });
+
+export const obtenerDetalleSuscriptor = (id: number) => apiFetch(`/suscriptores/${id}/`);
+
+export const actualizarSuscriptor = (id: number, data: Partial<{
+    nombre: string;
+    direccion: string;
+    estado_servicio: string;
+}>) => apiFetch(`/suscriptores/${id}/`, { method: 'PUT', body: JSON.stringify(data) });
+
+export const registrarLectura = (data: { medidor_id: string; valor: number }) =>
+    apiFetch('/lecturas/', { method: 'POST', body: JSON.stringify(data) });
+
+export const obtenerHistorialLecturas = (params?: { mes?: number; anio?: number; medidor_id?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.mes) queryParams.append('mes', params.mes.toString());
+    if (params?.anio) queryParams.append('anio', params.anio.toString());
+    if (params?.medidor_id) queryParams.append('medidor_id', params.medidor_id);
+    const query = queryParams.toString();
+    return apiFetch(`/lecturas/historial/${query ? `?${query}` : ''}`);
 };
 
-export const registrarPago = async (medidor_id: string, monto: number) => {
-    try {
-        const response = await fetch(`${API_URL}/pagos/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...getAuthHeaders()
-            },
-            body: JSON.stringify({ medidor_id, monto })
-        });
-        if (!response.ok) throw new Error('Error al registrar pago');
-        return await response.json();
-    } catch (error) {
-        console.error("Error registrando pago:", error);
-        return null;
-    }
+export const registrarPago = (data: {
+    medidor_id: string;
+    monto: number;
+    tipo?: 'PAGO' | 'ABONO';
+    metodo_pago?: string;
+    comentario?: string;
+    factura_id?: number;
+}) => apiFetch('/pagos/', { method: 'POST', body: JSON.stringify(data) });
+
+export const obtenerHistorialPagos = (params?: { medidor_id?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.medidor_id) queryParams.append('medidor_id', params.medidor_id);
+    const query = queryParams.toString();
+    return apiFetch(`/pagos/historial/${query ? `?${query}` : ''}`);
 };
 
-export const enviarLecturaAutomatica = async (medidor_id: string, valor: number) => {
-    try {
-        const response = await fetch(`${API_URL}/lectura-automatica/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                // El ESP32 no usa JWT por ahora, pero lo dejamos listo
-            },
-            body: JSON.stringify({ medidor_id, valor })
-        });
-        if (!response.ok) throw new Error('Error al enviar lectura');
-        return await response.json();
-    } catch (error) {
-        console.error("Error enviando lectura al Cerebro:", error);
-        return null;
-    }
+export const obtenerFacturas = (params?: { estado?: string; medidor_id?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.estado) queryParams.append('estado', params.estado);
+    if (params?.medidor_id) queryParams.append('medidor_id', params.medidor_id);
+    const query = queryParams.toString();
+    return apiFetch(`/facturas/${query ? `?${query}` : ''}`);
 };
+
+export const generarFacturas = (data: { mes: number; anio: number; tarifa?: number }) =>
+    apiFetch('/facturas/generar/', { method: 'POST', body: JSON.stringify(data) });
+
+export const obtenerPeriodos = () => apiFetch('/periodos/');
+
+export const crearPeriodo = (data: { mes: number; anio: number }) =>
+    apiFetch('/periodos/', { method: 'POST', body: JSON.stringify(data) });
+
+export const obtenerDashboard = () => apiFetch('/dashboard/');
+
+export const cortarServicio = (id: number) =>
+    apiFetch(`/suscriptores/${id}/cortar/`, { method: 'POST' });
+
+export const reconectarServicio = (id: number) =>
+    apiFetch(`/suscriptores/${id}/reconectar/`, { method: 'POST' });

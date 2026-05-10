@@ -1,81 +1,140 @@
 import { useState, useEffect } from 'react';
-import { Search, Check, X, ArrowLeft, LogOut } from 'lucide-react';
-import { obtenerSuscriptores, enviarLecturaAutomatica } from '../../services/api';
-import { logout } from '../../services/auth';
 import { useNavigate } from 'react-router';
-
-interface Suscriptor {
-  id: number;
-  representante: string;
-  codigoVivienda: string;
-  procesado: boolean;
-  lecturaActual?: number;
-  lecturaAnterior?: number;
-}
+import {
+  Search, CheckCircle, XCircle, ArrowLeft, LogOut,
+  Plus, Filter, Users, Clock, AlertCircle
+} from 'lucide-react';
+import {
+  obtenerSuscriptores, registrarLectura, obtenerHistorialLecturas,
+  obtenerDashboard
+} from '../../services/api';
+import { logout, isAuthenticated, getUserRole } from '../../services/auth';
 
 export default function ModuloLecturista() {
+  const navigate = useNavigate();
   const [vista, setVista] = useState<'lista' | 'captura'>('lista');
-  const [suscriptorSeleccionado, setSuscriptorSeleccionado] = useState<Suscriptor | null>(null);
+  const [suscriptorSeleccionado, setSuscriptorSeleccionado] = useState<any>(null);
   const [nuevaLectura, setNuevaLectura] = useState('');
   const [busqueda, setBusqueda] = useState('');
-  const [suscriptores, setSuscriptores] = useState<Suscriptor[]>([]);
+  const [suscriptores, setSuscriptores] = useState<any[]>([]);
+  const [lecturas, setLecturas] = useState<any[]>([]);
   const [cargando, setCargando] = useState(true);
-  const navigate = useNavigate();
+  const [mesFiltro, setMesFiltro] = useState('');
+  const [totalProcesados, setTotalProcesados] = useState(0);
+  const [dashboard, setDashboard] = useState<any>(null);
 
-  useEffect(() => {
-    const cargarDatos = async () => {
-      const data = await obtenerSuscriptores();
-      // Mapear los datos del backend al formato del frontend
+  const cargarDatos = async () => {
+    setCargando(true);
+    try {
+      const [data, dash] = await Promise.all([
+        obtenerSuscriptores(),
+        obtenerDashboard()
+      ]);
+
+      // Obtener la última lectura de cada suscriptor
+      const lecturasAll = await obtenerHistorialLecturas();
+
       const formatData = data.map((item: any) => {
-        // Obtenemos la última lectura si existe
-        const ultimaLectura = item.lecturas && item.lecturas.length > 0 
-          ? item.lecturas[item.lecturas.length - 1].valor 
+        const lecturasItem = lecturasAll.filter(
+          (l: any) => l.suscriptor_medidor_id === item.medidor_id
+        );
+        const ultimaLectura = lecturasItem.length > 0
+          ? lecturasItem[0].valor
           : 0;
 
         return {
-          id: item.id,
-          representante: item.nombre,
-          codigoVivienda: item.medidor_id,
-          procesado: false, // Por defecto, asumimos que no se ha procesado hoy
-          lecturaAnterior: ultimaLectura
+          ...item,
+          procesado: false,
+          lecturaAnterior: ultimaLectura,
+          ultimaFecha: lecturasItem.length > 0
+            ? lecturasItem[0].fecha_lectura
+            : null
         };
       });
+
       setSuscriptores(formatData);
+      setLecturas(lecturasAll);
+      setDashboard(dash);
+    } catch (err: any) {
+      if (err.message?.includes('401') || err.message?.includes('token')) {
+        logout();
+        navigate('/login');
+      }
+    } finally {
       setCargando(false);
-    };
+    }
+  };
+
+  useEffect(() => {
+    // Verificar autenticación
+    if (!isAuthenticated()) {
+      navigate('/login');
+      return;
+    }
+
+    // Verificar rol
+    const role = getUserRole();
+    if (role !== 'Lecturista' && role !== 'Administrador' && role !== 'SuperAdmin') {
+      navigate('/login');
+      return;
+    }
+
     cargarDatos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const suscriptoresFiltrados = suscriptores.filter(s =>
-    s.representante.toLowerCase().includes(busqueda.toLowerCase()) ||
-    s.codigoVivienda.toLowerCase().includes(busqueda.toLowerCase())
+    s.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
+    s.medidor_id?.toLowerCase().includes(busqueda.toLowerCase()) ||
+    s.direccion?.toLowerCase().includes(busqueda.toLowerCase())
   );
 
-  const handleSeleccionar = (suscriptor: Suscriptor) => {
+  const handleSeleccionar = (suscriptor: any) => {
     setSuscriptorSeleccionado(suscriptor);
     setVista('captura');
     setNuevaLectura('');
   };
 
   const handleGuardar = async () => {
-    if (suscriptorSeleccionado && nuevaLectura) {
-      const lecturaNum = parseInt(nuevaLectura);
-      // Enviar la lectura al backend
-      const res = await enviarLecturaAutomatica(suscriptorSeleccionado.codigoVivienda, lecturaNum);
-      
-      if (res && !res.error) {
-        setSuscriptores(prev => prev.map(s =>
-          s.id === suscriptorSeleccionado.id
-            ? { ...s, procesado: true, lecturaActual: lecturaNum }
-            : s
-        ));
-      } else {
-        alert("Hubo un error al guardar la lectura en el servidor.");
-      }
-      
+    if (!suscriptorSeleccionado || !nuevaLectura) return;
+
+    const lecturaNum = parseFloat(nuevaLectura);
+
+    if (isNaN(lecturaNum) || lecturaNum < 0) {
+      alert('Ingrese un valor válido para la lectura');
+      return;
+    }
+
+    // Validar que la nueva lectura sea mayor a la anterior
+    if (suscriptorSeleccionado.lecturaAnterior && lecturaNum < suscriptorSeleccionado.lecturaAnterior) {
+      alert(`La nueva lectura (${lecturaNum}) no puede ser menor que la anterior (${suscriptorSeleccionado.lecturaAnterior})`);
+      return;
+    }
+
+    try {
+      const res = await registrarLectura({
+        medidor_id: suscriptorSeleccionado.medidor_id,
+        valor: lecturaNum
+      });
+
+      console.log('Lectura registrada:', res);
+
+      // Actualizar estado local
+      setSuscriptores(prev => prev.map(s =>
+        s.medidor_id === suscriptorSeleccionado.medidor_id
+          ? { ...s, procesado: true, lecturaActual: lecturaNum }
+          : s
+      ));
+
+      setTotalProcesados(prev => prev + 1);
+
+      // Volver a la lista
       setVista('lista');
       setSuscriptorSeleccionado(null);
       setNuevaLectura('');
+    } catch (err: any) {
+      console.error('Error al guardar lectura:', err);
+      alert('Error al guardar la lectura: ' + (err.message || 'Error desconocido'));
     }
   };
 
@@ -84,140 +143,254 @@ export default function ModuloLecturista() {
     navigate('/login');
   };
 
+  // Vista de captura de lectura individual
   if (vista === 'captura' && suscriptorSeleccionado) {
     return (
-      <div className="max-w-md mx-auto bg-white rounded-xl shadow-[0_4px_6px_rgba(0,0,0,0.05)] border border-sinai-section overflow-hidden p-6 font-sans">
+      <div className="min-h-screen bg-gray-50 font-sans">
         {/* Header */}
-        <div className="border-b border-gray-100 pb-4 mb-6">
-          <button
-            onClick={() => setVista('lista')}
-            className="flex items-center gap-2 mb-4 text-gray-500 hover:text-sinai-primary transition-colors"
-          >
-            <ArrowLeft size={20} />
-            <span className="font-medium">Volver a la lista</span>
+        <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setVista('lista')} className="text-gray-500 hover:text-blue-600">
+              <ArrowLeft size={24} />
+            </button>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Captura de Lectura</h2>
+              <p className="text-sm text-gray-500">{suscriptorSeleccionado.nombre}</p>
+            </div>
+          </div>
+          <button onClick={handleLogout} className="text-gray-400 hover:text-red-500 text-sm flex items-center gap-1">
+            <LogOut size={16} /> Salir
           </button>
-          <h2 className="text-xl text-sinai-text font-bold uppercase tracking-wide">CAPTURA DE LECTURA</h2>
-          <p className="mt-2 text-lg text-sinai-text font-medium">{suscriptorSeleccionado.representante}</p>
-          <p className="text-sm text-gray-500 font-mono">{suscriptorSeleccionado.codigoVivienda}</p>
         </div>
 
-        {/* Datos Históricos */}
-        <div className="bg-sinai-section rounded-lg p-5 mb-6 shadow-sm border border-blue-100">
-          <h3 className="mb-4 text-sm font-semibold text-sinai-primary uppercase tracking-wider">Datos Históricos</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600 font-medium">Lectura Anterior:</span>
-              <span className="bg-white px-3 py-1 rounded shadow-sm font-mono text-sinai-text font-semibold">{suscriptorSeleccionado.lecturaAnterior} m³</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600 font-medium">Consumo Promedio:</span>
-              <span className="bg-white px-3 py-1 rounded shadow-sm font-mono text-gray-700">18 m³</span>
+        <div className="max-w-lg mx-auto p-6">
+          {/* Info del suscriptor */}
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-gray-500 text-xs">Medidor</p>
+                <p className="font-mono font-bold text-blue-900">{suscriptorSeleccionado.medidor_id}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs">Dirección</p>
+                <p className="text-blue-900">{suscriptorSeleccionado.direccion || '-'}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs">Lectura Anterior</p>
+                <p className="font-mono font-bold text-blue-900">{suscriptorSeleccionado.lecturaAnterior || 0} m³</p>
+              </div>
+              <div>
+                <p className="text-gray-500 text-xs">Última Fecha</p>
+                <p className="text-blue-900 text-xs">
+                  {suscriptorSeleccionado.ultimaFecha
+                    ? new Date(suscriptorSeleccionado.ultimaFecha).toLocaleDateString('es-CO')
+                    : 'N/A'}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Nueva Lectura */}
-        <div className="mb-8">
-          <label className="block mb-3 font-semibold text-gray-700 uppercase tracking-wide text-sm">NUEVA LECTURA</label>
-          <div className="relative">
-            <input
-              type="number"
-              value={nuevaLectura}
-              onChange={(e) => setNuevaLectura(e.target.value)}
-              placeholder="0"
-              className="w-full bg-white border-2 border-gray-200 rounded-lg p-5 text-3xl text-center font-mono text-sinai-primary focus:outline-none focus:border-sinai-primary transition-all shadow-sm"
-            />
-            <span className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 font-medium">m³</span>
+          {/* Ingreso de lectura */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              NUEVA LECTURA (m³)
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                value={nuevaLectura}
+                onChange={(e) => setNuevaLectura(e.target.value)}
+                placeholder="0"
+                className="w-full bg-gray-50 border-2 border-gray-200 rounded-xl p-6 text-4xl text-center font-mono text-blue-700 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                min="0"
+                step="any"
+              />
+              <span className="absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 text-lg font-medium">
+                m³
+              </span>
+            </div>
+
+            {suscriptorSeleccionado.lecturaAnterior > 0 && nuevaLectura && (
+              <div className="mt-4 bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+                <p className="text-sm text-green-700">
+                  Consumo estimado:{' '}
+                  <span className="font-bold text-lg">
+                    {(parseFloat(nuevaLectura) - suscriptorSeleccionado.lecturaAnterior).toFixed(2)} m³
+                  </span>
+                </p>
+              </div>
+            )}
           </div>
-        </div>
 
-        {/* Botón Guardar */}
-        <button
-          onClick={handleGuardar}
-          disabled={!nuevaLectura}
-          className="w-full bg-sinai-primary text-white rounded-lg p-4 text-lg font-semibold hover:bg-blue-600 transition-colors shadow-sm disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none"
-        >
-          GUARDAR Y VOLVER
-        </button>
+          {/* Botón guardar */}
+          <button
+            onClick={handleGuardar}
+            disabled={!nuevaLectura || parseFloat(nuevaLectura) < 0}
+            className="w-full mt-6 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-bold py-4 px-6 rounded-xl text-lg shadow-md hover:shadow-lg transition-all disabled:cursor-not-allowed"
+          >
+            <CheckCircle size={24} className="inline mr-2" />
+            GUARDAR LECTURA
+          </button>
+        </div>
       </div>
     );
   }
 
+  // Vista principal de lista
   return (
-    <div className="max-w-md mx-auto bg-white rounded-xl shadow-[0_4px_6px_rgba(0,0,0,0.05)] border border-sinai-section overflow-hidden min-h-[calc(100vh-100px)] font-sans">
+    <div className="min-h-screen bg-gray-50 font-sans">
       {/* Header */}
-      <div className="bg-sinai-primary text-white p-6 rounded-b-xl shadow-sm mb-6 flex justify-between items-start">
+      <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div>
-          <h1 className="text-2xl font-bold tracking-wide">SINAI SGA</h1>
-          <p className="text-blue-100 mt-1 font-medium">Módulo Lecturista</p>
+          <h1 className="text-xl font-bold text-gray-900">Sinai SGA</h1>
+          <p className="text-xs text-gray-500 font-medium">Módulo Lecturista</p>
         </div>
-        <button onClick={handleLogout} className="text-white/80 hover:text-white p-2">
-            <LogOut size={24} />
-        </button>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-gray-400 bg-white px-3 py-1 rounded-lg border">
+            {new Date().toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' })}
+          </span>
+          <button onClick={handleLogout} className="text-gray-400 hover:text-red-500 flex items-center gap-1">
+            <LogOut size={18} />
+          </button>
+        </div>
       </div>
 
-      <div className="px-6 pb-6">
-        {/* Barra de búsqueda */}
-        <div className="bg-sinai-bg rounded-lg p-3 mb-6 flex items-center gap-3 border border-gray-200 focus-within:border-sinai-primary transition-all shadow-sm">
-          <Search size={20} className="text-gray-400" />
+      <div className="p-4">
+        {/* Tarjetas de resumen */}
+        {dashboard && (
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+              <p className="text-2xl font-bold text-blue-700">{dashboard.total_suscriptores}</p>
+              <p className="text-xs text-blue-600 font-medium">Total Suscriptores</p>
+            </div>
+            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center">
+              <p className="text-2xl font-bold text-orange-700">${Number(dashboard.total_deuda || 0).toLocaleString()}</p>
+              <p className="text-xs text-orange-600 font-medium">Deuda Total</p>
+            </div>
+          </div>
+        )}
+
+        {/* Progreso del día */}
+        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 shadow-sm">
+          <div className="flex justify-between items-center mb-2">
+            <p className="text-sm font-semibold text-gray-700">
+              Lecturas del día: {totalProcesados} / {suscriptores.length}
+            </p>
+            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
+              totalProcesados === suscriptores.length
+                ? 'bg-green-100 text-green-700'
+                : 'bg-gray-100 text-gray-600'
+            }`}>
+              {totalProcesados === suscriptores.length ? 'COMPLETADO' : 'EN PROGRESO'}
+            </span>
+          </div>
+          <div className="w-full bg-gray-100 rounded-full h-3">
+            <div
+              className="bg-blue-600 h-3 rounded-full transition-all duration-500"
+              style={{
+                width: `${Math.min(100, (totalProcesados / Math.max(1, suscriptores.length)) * 100)}%`
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Búsqueda */}
+        <div className="relative mb-4">
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Buscar por nombre o código..."
+            placeholder="Buscar por nombre, medidor o dirección..."
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            className="flex-1 bg-transparent outline-none text-sinai-text placeholder:text-gray-400"
+            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400"
           />
         </div>
 
-        {/* Lista de Suscriptores */}
-        <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-gray-500 mb-3 ml-1 uppercase tracking-wider">LISTA DE SUSCRIPTORES</h2>
+        {/* Botón ver historial */}
+        <button
+          onClick={async () => {
+            const hist = await obtenerHistorialLecturas();
+            setLecturas(hist);
+            setVista('historial');
+          }}
+          className="w-full mb-4 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all"
+        >
+          <Clock size={16} />
+          Ver historial de lecturas
+        </button>
 
-          {cargando ? (
-              <div className="flex justify-center p-8">
-                  <div className="w-8 h-8 border-4 border-sinai-primary border-t-transparent rounded-full animate-spin"></div>
-              </div>
-          ) : (
-            suscriptoresFiltrados.map(suscriptor => (
-              <div
-                key={suscriptor.id}
-                onClick={() => !suscriptor.procesado && handleSeleccionar(suscriptor)}
-                className={`p-4 rounded-lg flex items-center justify-between transition-all border ${
-                  suscriptor.procesado 
-                    ? 'bg-sinai-success/30 border-green-100' 
-                    : 'bg-white border-sinai-section shadow-[0_2px_4px_rgba(0,0,0,0.02)] cursor-pointer hover:border-sinai-primary/50 hover:shadow-md'
-                }`}
-              >
-                <div className="flex-1">
-                  <p className={`font-semibold ${suscriptor.procesado ? 'text-gray-600' : 'text-sinai-text'}`}>
-                    {suscriptor.representante}
-                  </p>
-                  <p className="text-sm text-gray-500 font-mono mt-0.5">{suscriptor.codigoVivienda}</p>
+        {/* Lista de suscriptores */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-center px-1">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              {suscriptoresFiltrados.length} suscriptores
+            </p>
+            <p className="text-xs text-gray-400">
+              Procesados hoy: <span className="font-bold text-blue-600">{totalProcesados}</span>
+            </p>
+          </div>
+
+          {suscriptoresFiltrados.map((s) => (
+            <div
+              key={s.medidor_id}
+              onClick={() => !s.procesado && handleSeleccionar(s)}
+              className={`p-4 rounded-xl border transition-all ${
+                s.procesado
+                  ? 'bg-green-50 border-green-200 cursor-default opacity-70'
+                  : 'bg-white border-gray-200 cursor-pointer hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className={`font-semibold text-sm truncate ${
+                      s.procesado ? 'text-gray-500' : 'text-gray-900'
+                    }`}>
+                      {s.nombre}
+                    </p>
+                    {s.procesado && (
+                      <CheckCircle size={14} className="text-green-500 flex-shrink-0" />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <p className="text-xs font-mono text-gray-400">{s.medidor_id}</p>
+                    <span className="text-xs text-gray-300">•</span>
+                    <p className="text-xs text-gray-400 truncate">{s.direccion || 'Sin dirección'}</p>
+                  </div>
+                  {s.lecturaAnterior > 0 && (
+                    <p className="text-xs text-blue-500 mt-1">
+                      Última lectura: {s.lecturaAnterior} m³
+                      {s.ultimaFecha && (
+                        <span className="text-gray-400">
+                          {' '}({new Date(s.ultimaFecha).toLocaleDateString('es-CO')})
+                        </span>
+                      )}
+                    </p>
+                  )}
                 </div>
-                <div>
-                  {suscriptor.procesado ? (
-                    <div className="bg-sinai-success text-green-700 p-2 rounded-full shadow-sm">
-                      <Check size={20} />
+                <div className="flex-shrink-0 ml-3">
+                  {s.procesado ? (
+                    <div className="bg-green-100 text-green-700 px-2.5 py-1 rounded-full text-xs font-semibold">
+                      OK
                     </div>
                   ) : (
-                    <div className="text-gray-300">
-                      <X size={20} />
+                    <div className="bg-gray-100 text-gray-400 px-2.5 py-1 rounded-full text-xs font-semibold">
+                      PENDIENTE
                     </div>
                   )}
                 </div>
               </div>
-            ))
-          )}
-          {!cargando && suscriptoresFiltrados.length === 0 && (
-              <p className="text-center text-gray-500 mt-8 font-medium">No se encontraron suscriptores.</p>
-          )}
-        </div>
+            </div>
+          ))}
 
-        {/* Contador */}
-        <div className="mt-8 pt-4 border-t border-gray-100">
-          <p className="text-center text-gray-500 text-sm font-medium">
-            Procesados: <span className="font-mono font-bold text-sinai-primary">{suscriptores.filter(s => s.procesado).length}</span> / {suscriptores.length}
-          </p>
+          {suscriptoresFiltrados.length === 0 && (
+            <div className="text-center py-12">
+              <Users size={40} className="mx-auto text-gray-300 mb-3" />
+              <p className="text-gray-400 text-sm">
+                {busqueda ? 'No se encontraron resultados' : 'No hay suscriptores registrados'}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

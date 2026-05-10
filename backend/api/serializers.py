@@ -1,49 +1,117 @@
 from rest_framework import serializers
-from .models import Suscriptor, Lectura
+from .models import Suscriptor, Lectura, PeriodoLectura, Factura, Pago
+
 
 class LecturaSerializer(serializers.ModelSerializer):
     suscriptor_nombre = serializers.CharField(source='suscriptor.nombre', read_only=True)
-    
+    suscriptor_medidor_id = serializers.CharField(source='suscriptor.medidor_id', read_only=True)
+    lecturista_nombre = serializers.CharField(source='lecturista.username', read_only=True)
+
     class Meta:
         model = Lectura
-        fields = ['id', 'valor', 'fecha_lectura', 'suscriptor_nombre']
+        fields = [
+            'id', 'suscriptor_nombre', 'suscriptor_medidor_id',
+            'valor', 'fecha_lectura', 'lecturista_nombre'
+        ]
+
 
 class SuscriptorSerializer(serializers.ModelSerializer):
-    lecturas = LecturaSerializer(many=True, read_only=True)
-    lectura_actual = serializers.SerializerMethodField()
-    consumo = serializers.SerializerMethodField()
-    monto = serializers.SerializerMethodField()
-    estadoPago = serializers.SerializerMethodField()
+    deuda_total = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    cantidad_facturas_pendientes = serializers.SerializerMethodField()
 
     class Meta:
         model = Suscriptor
-        fields = ['id', 'nombre', 'medidor_id', 'creado_en', 'lecturas', 'lectura_actual', 'consumo', 'monto', 'estadoPago']
+        fields = [
+            'id', 'nombre', 'medidor_id', 'direccion',
+            'estado_servicio', 'deuda_total', 'creado_en',
+            'cantidad_facturas_pendientes'
+        ]
 
-    def get_lectura_actual(self, obj):
-        ultima = obj.lecturas.order_by('-fecha_lectura').first()
-        return ultima.valor if ultima else 0
+    def get_cantidad_facturas_pendientes(self, obj):
+        return obj.facturas.filter(estado='PENDIENTE').count()
 
-    def get_consumo(self, obj):
-        lecturas = obj.lecturas.order_by('-fecha_lectura')[:2]
-        if len(lecturas) >= 2:
-            return max(0, lecturas[0].valor - lecturas[1].valor)
-        return 0
 
-    def get_monto(self, obj):
-        # Tarifa base de $1500 por m3
-        # Calculamos la deuda total: (ultima lectura - primera lectura) * 1500 - (suma pagos)
-        lecturas = obj.lecturas.order_by('fecha_lectura')
-        if len(lecturas) < 2:
-            return 0
-        
-        consumo_total = max(0, lecturas.last().valor - lecturas.first().valor)
-        total_facturado = consumo_total * 1500
-        
-        pagos = sum([p.monto for p in obj.pagos.all()])
-        return max(0, total_facturado - pagos)
+class SuscriptorDetailSerializer(serializers.ModelSerializer):
+    lecturas = LecturaSerializer(many=True, read_only=True)
+    facturas = serializers.SerializerMethodField()
+    pagos = serializers.SerializerMethodField()
+    deuda_total = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
 
-    def get_estadoPago(self, obj):
-        monto = self.get_monto(obj)
-        if monto <= 0:
-            return 'Pagado'
-        return 'Pendiente'
+    class Meta:
+        model = Suscriptor
+        fields = [
+            'id', 'nombre', 'medidor_id', 'direccion',
+            'estado_servicio', 'mes_deuda_continua', 'creado_en',
+            'deuda_total', 'lecturas', 'facturas', 'pagos'
+        ]
+
+    def get_facturas(self, obj):
+        facturas = obj.facturas.all()[:10]
+        return FacturaSerializer(facturas, many=True).data
+
+    def get_pagos(self, obj):
+        pagos = obj.pagos.all()[:10]
+        return PagoSerializer(pagos, many=True).data
+
+
+class FacturaSerializer(serializers.ModelSerializer):
+    suscriptor_nombre = serializers.CharField(source='suscriptor.nombre', read_only=True)
+    suscriptor_medidor_id = serializers.CharField(source='suscriptor.medidor_id', read_only=True)
+    periodo_info = serializers.CharField(source='periodo.__str__', read_only=True)
+    saldo_pendiente = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+
+    class Meta:
+        model = Factura
+        fields = [
+            'id', 'suscriptor_nombre', 'suscriptor_medidor_id',
+            'monto', 'monto_pagado', 'abonos', 'consumo',
+            'estado', 'fecha_generacion', 'periodo_info',
+            'saldo_pendiente'
+        ]
+
+
+class PagoSerializer(serializers.ModelSerializer):
+    suscriptor_nombre = serializers.CharField(source='suscriptor.nombre', read_only=True)
+    suscriptor_medidor_id = serializers.CharField(source='suscriptor.medidor_id', read_only=True)
+    registrado_por_nombre = serializers.CharField(source='registrado_por.username', read_only=True)
+
+    class Meta:
+        model = Pago
+        fields = [
+            'id', 'suscriptor_nombre', 'suscriptor_medidor_id',
+            'monto', 'tipo', 'metodo_pago', 'comentario',
+            'registrado_por_nombre', 'fecha_pago'
+        ]
+
+
+class PeriodoLecturaSerializer(serializers.ModelSerializer):
+    cantidad_facturas = serializers.SerializerMethodField()
+    facturas_generadas = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PeriodoLectura
+        fields = [
+            'id', 'mes', 'anio', 'estado',
+            'fecha_creacion', 'fecha_cierre',
+            'cantidad_facturas', 'facturas_generadas'
+        ]
+
+    def get_cantidad_facturas(self, obj):
+        return obj.facturas.count()
+
+    def get_facturas_generadas(self, obj):
+        if obj.estado == 'CERRADO':
+            return FacturaSerializer(obj.facturas.all()[:5], many=True).data
+        return []
+
+
+class DashboardSerializer(serializers.Serializer):
+    total_suscriptores = serializers.IntegerField()
+    suscriptores_activos = serializers.IntegerField()
+    suscriptores_cortados = serializers.IntegerField()
+    facturas_pendientes = serializers.IntegerField()
+    facturas_pagadas = serializers.IntegerField()
+    total_deuda = serializers.DecimalField(max_digits=14, decimal_places=2)
+    ultima_lectura = serializers.DateTimeField()
+    total_lecturas = serializers.IntegerField()
+    total_pagos = serializers.IntegerField()

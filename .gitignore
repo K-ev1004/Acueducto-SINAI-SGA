@@ -2,20 +2,48 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyo
+*.pyd
 venv/
 .venv/
 env/
 .env
-
-# Node
-node_modules/
-dist/
-.DS_Store
+.env.local
+.env.*.local
 
 # Django
 db.sqlite3
 local_settings.py
+*.log
+staticfiles/
+mediafiles/
+
+# Node
+node_modules/
+dist/
+build/
+.npm
+.yarn
 
 # IDEs
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Seguridad - NO SUBIR
+*.pem
+*.key
+*.crt
+credentials.json
+service-account.json
+
+# Testing
+htmlcov/
+.coverage
+.pytest_cache/
