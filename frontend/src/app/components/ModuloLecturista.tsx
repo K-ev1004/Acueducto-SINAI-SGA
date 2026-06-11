@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Search, CheckCircle, XCircle, ArrowLeft, LogOut,
-  Plus, Filter, Users, Clock, AlertCircle
+  Plus, Filter, Users, Clock, AlertCircle, Calendar
 } from 'lucide-react';
 import {
   obtenerSuscriptores, registrarLectura, obtenerHistorialLecturas,
-  obtenerDashboard
+  obtenerDashboard, obtenerPeriodoActual
 } from '../../services/api';
 import { logout, isAuthenticated, getUserRole } from '../../services/auth';
 
@@ -22,17 +22,26 @@ export default function ModuloLecturista() {
   const [mesFiltro, setMesFiltro] = useState('');
   const [totalProcesados, setTotalProcesados] = useState(0);
   const [dashboard, setDashboard] = useState<any>(null);
+  const [periodoActual, setPeriodoActual] = useState<any>(null);
 
   const cargarDatos = async () => {
     setCargando(true);
     try {
-      const [data, dash] = await Promise.all([
+      const [data, dash, periodo] = await Promise.all([
         obtenerSuscriptores(),
-        obtenerDashboard()
+        obtenerDashboard(),
+        obtenerPeriodoActual()
       ]);
 
-      // Obtener la última lectura de cada suscriptor
       const lecturasAll = await obtenerHistorialLecturas();
+
+      const lecturasEnPeriodo = periodo?.id
+        ? lecturasAll.filter((l: any) => l.periodo === periodo.id)
+        : [];
+
+      const medidoresProcesados = new Set(
+        lecturasEnPeriodo.map((l: any) => l.suscriptor_medidor_id)
+      );
 
       const formatData = data.map((item: any) => {
         const lecturasItem = lecturasAll.filter(
@@ -44,7 +53,7 @@ export default function ModuloLecturista() {
 
         return {
           ...item,
-          procesado: false,
+          procesado: medidoresProcesados.has(item.medidor_id),
           lecturaAnterior: ultimaLectura,
           ultimaFecha: lecturasItem.length > 0
             ? lecturasItem[0].fecha_lectura
@@ -55,6 +64,8 @@ export default function ModuloLecturista() {
       setSuscriptores(formatData);
       setLecturas(lecturasAll);
       setDashboard(dash);
+      setPeriodoActual(periodo);
+      setTotalProcesados(medidoresProcesados.size);
     } catch (err: any) {
       if (err.message?.includes('401') || err.message?.includes('token')) {
         logout();
@@ -256,16 +267,33 @@ export default function ModuloLecturista() {
       </div>
 
       <div className="p-4">
-        {/* Tarjetas de resumen */}
-        {dashboard && (
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
-              <p className="text-2xl font-bold text-blue-700">{dashboard.total_suscriptores}</p>
-              <p className="text-xs text-blue-600 font-medium">Total Suscriptores</p>
+        {/* Banner del período actual */}
+        {periodoActual && (
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl p-4 mb-6 text-white shadow-md">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <Calendar size={18} />
+                <p className="font-bold text-lg">{periodoActual.nombre_mes} {periodoActual.anio}</p>
+              </div>
+              <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
+                periodoActual.estado === 'ABIERTO' ? 'bg-green-400/30 text-green-100' : 'bg-gray-400/30 text-gray-100'
+              }`}>
+                {periodoActual.estado}
+              </span>
             </div>
-            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 text-center">
-              <p className="text-2xl font-bold text-orange-700">${Number(dashboard.total_deuda || 0).toLocaleString()}</p>
-              <p className="text-xs text-orange-600 font-medium">Deuda Total</p>
+            <div className="flex justify-between items-center mt-2">
+              <p className="text-sm text-blue-100">
+                Lecturas: <span className="font-bold text-white">{periodoActual.lecturas_tomadas}</span> / {periodoActual.total_activos}
+              </p>
+              <p className="text-sm text-blue-100">
+                <span className="font-bold text-white">{periodoActual.porcentaje_lecturas}%</span> completado
+              </p>
+            </div>
+            <div className="w-full bg-blue-400/30 rounded-full h-2 mt-2">
+              <div
+                className="bg-white h-2 rounded-full transition-all duration-500"
+                style={{ width: `${periodoActual.porcentaje_lecturas}%` }}
+              />
             </div>
           </div>
         )}

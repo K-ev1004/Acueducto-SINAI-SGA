@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @page { size: half-letter landscape; margin: 10mm; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Courier New', monospace; font-size: 10pt; color: #000; }
+    .center { text-align: center; }
+    .bold { font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; }
+    td { padding: 3mm 2mm; }
+    .borde { border: 1px solid #000; }
+    .borde-bottom { border-bottom: 1px solid #000; }
+    .firma { margin-top: 8mm; }
+  </style>
+</head>
+<body>
+  <div class="center bold" style="font-size:14pt;">RECIBO DE PAGO</div>
+  <div class="center" style="margin-bottom:4mm;">{{ config.nombre_empresa }}</div>
+
+  <table class="borde">
+    <tr><td style="width:40%;"><strong>N° Recibo:</strong></td><td>{{ pago.numero_recibo }}</td></tr>
+    <tr><td><strong>Fecha:</strong></td><td>{{ fecha }}</td></tr>
+    <tr><td><strong>Suscriptor:</strong></td><td>{{ suscriptor.nombre }}</td></tr>
+    <tr><td><strong>Medidor:</strong></td><td>{{ suscriptor.medidor_id }}</td></tr>
+    <tr><td><strong>Dirección:</strong></td><td>{{ suscriptor.direccion }}</td></tr>
+    <tr><td><strong>Tipo:</strong></td><td>{{ pago.get_tipo_display }}</td></tr>
+    <tr><td><strong>Método:</strong></td><td>{{ pago.get_metodo_pago_display }}</td></tr>
+    <tr><td><strong>Monto:</strong></td><td class="bold">{{ monto_formato }}</td></tr>
+    {% if pago.factura %}
+    <tr><td><strong>Factura:</strong></td><td>{{ pago.factura.numero_factura }}</td></tr>
+    {% endif %}
+    {% if pago.comentario %}
+    <tr><td><strong>Comentario:</strong></td><td>{{ pago.comentario }}</td></tr>
+    {% endif %}
+    <tr><td><strong>Registrado por:</strong></td><td>{{ pago.registrado_por.username|default:"-" }}</td></tr>
+  </table>
+
+  <div class="firma">
+    <table>
+      <tr>
+        <td class="center">_________________________</td>
+        <td class="center">_________________________</td>
+      </tr>
+      <tr>
+        <td class="center">Firma Cobrador</td>
+        <td class="center">Firma Suscriptor</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="center" style="margin-top:4mm; font-size:8pt; color:#555;">
+    {{ config.nombre_empresa }} — {{ config.nit_empresa }}<br>
+    {{ config.mensaje_pie }}
+  </div>
+</body>
+</html>

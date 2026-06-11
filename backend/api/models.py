@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 
 class Suscriptor(models.Model):
@@ -13,6 +14,10 @@ class Suscriptor(models.Model):
     medidor_id = models.CharField(max_length=50, unique=True)
     direccion = models.CharField(max_length=255, blank=True)
     telefono = models.CharField(max_length=20, blank=True)
+    email = models.EmailField(max_length=255, blank=True, verbose_name='Correo electrónico')
+    documento = models.CharField(max_length=20, blank=True, verbose_name='Documento de identidad')
+    codigo_usuario = models.CharField(max_length=20, blank=True, verbose_name='Código de usuario')
+    subsidio = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name='Subsidio aplicado')
     estado_servicio = models.CharField(max_length=20, choices=ESTADO_SERVICIO, default='ACTIVO')
     mes_deuda_continua = models.PositiveIntegerField(default=0)
     creado_en = models.DateTimeField(auto_now_add=True)
@@ -29,6 +34,13 @@ class Suscriptor(models.Model):
     def deuda_total(self):
         facturas_pendientes = self.facturas.filter(estado='PENDIENTE')
         return sum(f.monto - f.monto_pagado - f.abonos for f in facturas_pendientes)
+
+    def ultima_lectura(self):
+        ultima = self.lecturas.order_by('-fecha_lectura').first()
+        return ultima
+
+    def lectura_en_periodo(self, periodo):
+        return self.lecturas.filter(periodo=periodo).first()
 
 
 class PeriodoLectura(models.Model):
@@ -54,9 +66,49 @@ class PeriodoLectura(models.Model):
         mes_nombre = calendar.month_name[self.mes]
         return f"{mes_nombre} {self.anio} ({self.estado})"
 
+    @classmethod
+    def obtener_o_crear_actual(cls):
+        hoy = timezone.now().date()
+        mes = hoy.month
+        anio = hoy.year
+        periodo, creado = cls.objects.get_or_create(
+            mes=mes, anio=anio,
+            defaults={'estado': 'ABIERTO'}
+        )
+        return periodo, creado
+
+    @classmethod
+    def obtener_ultimo_cerrado(cls):
+        return cls.objects.filter(estado='CERRADO').order_by('-anio', '-mes').first()
+
+    @property
+    def nombre_mes(self):
+        import calendar
+        return calendar.month_name[self.mes]
+
+    def porcentaje_lecturas(self):
+        total = Suscriptor.objects.filter(estado_servicio='ACTIVO').count()
+        if total == 0:
+            return 100
+        tomadas = self.lecturas.count()
+        return int((tomadas / total) * 100)
+
+    def puede_cerrarse(self):
+        suscriptores_activos = Suscriptor.objects.filter(estado_servicio='ACTIVO')
+        if not suscriptores_activos.exists():
+            return False, 'No hay suscriptores activos'
+        sin_lectura = []
+        for s in suscriptores_activos:
+            if not self.lecturas.filter(suscriptor=s).exists():
+                sin_lectura.append(s.medidor_id)
+        if sin_lectura:
+            return False, f'Faltan lecturas para: {", ".join(sin_lectura[:5])}'
+        return True, 'OK'
+
 
 class Lectura(models.Model):
     suscriptor = models.ForeignKey(Suscriptor, on_delete=models.CASCADE, related_name='lecturas')
+    periodo = models.ForeignKey(PeriodoLectura, on_delete=models.CASCADE, null=True, blank=True, related_name='lecturas')
     valor = models.FloatField()
     fecha_lectura = models.DateTimeField(auto_now_add=True)
     lecturista = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='lecturas_tomadas')
@@ -79,24 +131,44 @@ class Factura(models.Model):
 
     suscriptor = models.ForeignKey(Suscriptor, on_delete=models.CASCADE, related_name='facturas')
     periodo = models.ForeignKey(PeriodoLectura, on_delete=models.SET_NULL, null=True, related_name='facturas')
+    numero_factura = models.CharField(max_length=20, unique=True, blank=True, verbose_name='N° Factura')
     monto = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     monto_pagado = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    consumo = models.FloatField(default=0)
+    consumo = models.FloatField(default=0, verbose_name='Consumo m³')
+    valor_m3 = models.DecimalField(max_digits=10, decimal_places=2, default=1500, verbose_name='Valor m³')
+    valor_aseo = models.DecimalField(max_digits=10, decimal_places=2, default=7000, verbose_name='Cargo aseo')
+    valor_consumo_mes = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name='Valor consumo')
+    subsidio_aplicado = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name='Subsidio')
     estado = models.CharField(max_length=20, choices=ESTADO_FACTURA, default='PENDIENTE')
     fecha_generacion = models.DateTimeField(auto_now_add=True)
-    abonos = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    fecha_vencimiento = models.DateField(null=True, blank=True, verbose_name='Fecha de vencimiento')
+    deuda_acumulada = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='Deuda acumulada')
+    abonos = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='Abonos')
+    abono_deuda = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='Abono a la deuda')
+    fecha_pago = models.DateField(null=True, blank=True, verbose_name='Fecha de pago')
+    firma_cobrador = models.CharField(max_length=100, blank=True, verbose_name='Firma cobrador')
+    total_pagado = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='T. Pagado')
+    nuevo_saldo = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='Nuevo saldo')
+    email_enviado = models.BooleanField(default=False, verbose_name='Email enviado')
 
     class Meta:
         verbose_name = 'Factura'
         verbose_name_plural = 'Facturas'
         ordering = ['-fecha_generacion']
 
+    def save(self, *args, **kwargs):
+        if not self.numero_factura:
+            last = Factura.objects.order_by('-id').first()
+            next_num = (last.id + 1) if last else 1
+            self.numero_factura = f"FAC-{next_num:06d}"
+        super().save(*args, **kwargs)
+
     @property
     def saldo_pendiente(self):
         return max(0, float(self.monto) - float(self.monto_pagado) - float(self.abonos))
 
     def __str__(self):
-        return f"Factura {self.suscriptor.medidor_id} - ${self.monto}"
+        return f"#{self.numero_factura} - {self.suscriptor.medidor_id} - ${self.monto}"
 
 
 class Pago(models.Model):
@@ -112,9 +184,11 @@ class Pago(models.Model):
     ]
 
     suscriptor = models.ForeignKey(Suscriptor, on_delete=models.CASCADE, related_name='pagos')
+    factura = models.ForeignKey(Factura, on_delete=models.SET_NULL, null=True, blank=True, related_name='pagos')
     monto = models.DecimalField(max_digits=10, decimal_places=2)
     tipo = models.CharField(max_length=10, choices=TIPO_PAGO, default='PAGO')
     metodo_pago = models.CharField(max_length=20, choices=METODO_PAGO, default='EFECTIVO')
+    numero_recibo = models.CharField(max_length=20, blank=True, verbose_name='N° Recibo')
     comentario = models.TextField(blank=True)
     registrado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='pagos_registrados')
     fecha_pago = models.DateTimeField(auto_now_add=True)
@@ -124,5 +198,36 @@ class Pago(models.Model):
         verbose_name_plural = 'Pagos'
         ordering = ['-fecha_pago']
 
+    def save(self, *args, **kwargs):
+        if not self.numero_recibo:
+            last = Pago.objects.order_by('-id').first()
+            next_num = (last.id + 1) if last else 1
+            self.numero_recibo = f"REC-{next_num:06d}"
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.tipo} ${self.monto} - {self.suscriptor.nombre}"
+
+
+class ConfiguracionGeneral(models.Model):
+    tarifa_m3 = models.DecimalField(max_digits=10, decimal_places=2, default=1500, verbose_name='Tarifa por m³')
+    cargo_aseo = models.DecimalField(max_digits=10, decimal_places=2, default=7000, verbose_name='Cargo de aseo')
+    cargo_reconexion = models.DecimalField(max_digits=10, decimal_places=2, default=50000, verbose_name='Cargo de reconexión')
+    dias_plazo_pago = models.PositiveIntegerField(default=15, verbose_name='Días de plazo para pago')
+    nombre_empresa = models.CharField(max_length=255, default='EMPRESA DE SERVICIOS PÚBLICOS AAA CORPOSINAÍ', verbose_name='Nombre de la empresa')
+    nit_empresa = models.CharField(max_length=20, blank=True, verbose_name='NIT')
+    direccion_empresa = models.CharField(max_length=255, blank=True, verbose_name='Dirección')
+    telefono_empresa = models.CharField(max_length=20, blank=True, verbose_name='Teléfono')
+    mensaje_pie = models.TextField(blank=True, default='Paga a tiempo tu factura y no te expongas al cobro por reconexión.', verbose_name='Mensaje al pie')
+
+    class Meta:
+        verbose_name = 'Configuración General'
+        verbose_name_plural = 'Configuración General'
+
+    def __str__(self):
+        return "Configuración General del Sistema"
+
+    @classmethod
+    def obtener(cls):
+        config, _ = cls.objects.get_or_create(pk=1)
+        return config

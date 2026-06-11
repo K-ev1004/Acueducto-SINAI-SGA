@@ -1,5 +1,5 @@
 # =============================================================================
-# SENA SGA - Dependencias del Proyecto
+# SINA SGA - Dependencias del Proyecto
 # =============================================================================
 # Instalar: pip install -r requirements.txt
 # =============================================================================
@@ -27,13 +27,33 @@ django-cors-headers==4.4.0
 python-dotenv==1.0.1
 
 # ============================================
-# Utilidades
+# PDF Generation (xhtml2pdf reemplazó a WeasyPrint)
 # ============================================
+xhtml2pdf==0.2.17
+
+# ============================================
+# Gráficos para facturas PDF (solo individuales)
+# ============================================
+matplotlib==3.9.2
 Pillow==10.4.0
 
 # ============================================
-# Desarrollo y Testing
+# Documentación de API (Swagger/OpenAPI)
+# ============================================
+drf-spectacular==0.29.0
+
+# ============================================
+# Tareas Programadas (Django Q2, usa PostgreSQL)
+# ============================================
+django-q2==1.10.0
+
+# ============================================
+# Migración desde Excel (comando de una sola vez)
+# ============================================
+openpyxl==3.1.5
+
+# ============================================
+# Desarrollo y Testing (opcionales)
 # ============================================
 black==24.4.2
 flake8==7.1.1
-pip-tools==7.4.1

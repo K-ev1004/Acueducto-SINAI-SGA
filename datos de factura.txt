@@ -1,0 +1,52 @@
+EMPRESA DE SERVICIOS PÚBLICOS AAA CORPOSINAÍ									
+FACTURACION DIAN:						FACTURA No:			
+De:		a				0			
+	CÓDIGO USUARIO	0							
+				USUARIO:	0		DIRECCIÓN	0	
+									
+				DOC. USUARIO:		0	FECHA FACTURACIÓN:		0/01/1900
+									
+				MEDIDOR:		0	DEUDA ACUMULADA		$ 0
+									
+				MES DE SERVICIO:		0	CONSUMO MES. MC		0
+									
+				LECTURA ANTERIOR		0	LECTURA ACTUAL		0
+									
+				VALOR M.CÚBICO:		$ 0	VALOR CONSUMO MES:		$ 0
+									
+				ASEO:		$ 0	SUBSIDIO:		$ 0
+									
+				ABONO A LA DEUDA:			TOTAL A PAGAR MES:		$ 0
+Paga a tiempo tu factura y no te expongas al cobro por reconexión. Fecha de corte: 20 de agosto del 2025.									
+							T. PAGADO:		
+							NUEVO SALDO		
+							FECHA PAGO:		
+				FIRMA COBRADOR					
+									
+									
+									
+									
+EMPRESA DE SERVICIOS PÚBLICOS AAA CORPOSINAÍ									
+FACTURACION DIAN:						FACTURA No:			
+De:	0	a	0			0			
+	CÓDOGO USUARIO	0							
+				USUARIO:	0		DIRECCIÓN	0	
+									
+				DOC. USUARIO:		0	FECHA FACTURACIÓN:		0/01/1900
+									
+				MEDIDOR:		0	DEUDA ACUMULADA		$ 0
+									
+				MES DE SERVICIO:		0	CONSUMO MES. MC		0
+									
+				LECTURA ANTERIOR		0	LECTURA ACTUAL		0
+									
+				VALOR M.CÚBICO:		$ 0	VALOR CONSUMO MES:		$ 0
+									
+				ASEO:		$ 0	SUBSIDIO:		$ 0
+									
+				ABONO A LA DEUDA:			TOTAL A PAGAR MES:		$ 0
+Paga a tiempo tu factura y no te expongas al cobro por reconexión. Fecha de corte: 20 de agosto del 2025.									
+							T. RECIBIDO:		
+							NUEVO SALDO		
+							FECHA PAGO:		
+									

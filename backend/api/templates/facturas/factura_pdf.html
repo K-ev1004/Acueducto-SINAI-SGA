@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+{% load humanize %}
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @page {
+      size: letter portrait;
+      margin: 8mm 8mm 8mm 8mm;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Courier New', 'Courier', monospace;
+      font-size: 8.5pt;
+      color: #000;
+    }
+    .page {
+      width: 216mm;
+      margin: 0 auto;
+    }
+    .corte {
+      border-top: 1px dashed #000;
+      margin: 4mm 0;
+      text-align: center;
+      font-size: 7pt;
+      color: #555;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    td { vertical-align: top; padding: 1mm 1.5mm; }
+    .borde { border: 1px solid #000; }
+    .borde-bottom { border-bottom: 1px solid #000; }
+    .borde-right { border-right: 1px solid #000; }
+    .center { text-align: center; }
+    .right { text-align: right; }
+    .bold { font-weight: bold; }
+    .fs-7 { font-size: 7pt; }
+    .fs-9 { font-size: 9pt; }
+    .fs-10 { font-size: 10pt; }
+    .fs-12 { font-size: 12pt; }
+    .p-1 { padding: 1mm; }
+    .p-2 { padding: 2mm; }
+    .mt-2 { margin-top: 2mm; }
+    .mb-1 { margin-bottom: 1mm; }
+    .w-50 { width: 50%; }
+    .logo {
+      max-width: 50mm;
+      max-height: 20mm;
+    }
+    .qr {
+      max-width: 25mm;
+      max-height: 25mm;
+    }
+    .grafico {
+      width: 80mm;
+      height: 30mm;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <!-- ============ SECCIÓN ORIGINAL (EMPRESA) ============ -->
+    <table>
+      <tr>
+        <td class="center" style="width:55mm;">
+          {% if logo %}
+          <img src="{{ logo }}" class="logo" alt="Logo">
+          {% endif %}
+        </td>
+        <td class="center bold fs-12">{{ config.nombre_empresa }}</td>
+        <td style="width:40mm;" class="right fs-7 p-1">
+          FACTURACION DIAN<br>
+          FACTURA No: <strong>{{ factura.numero_factura }}</strong>
+        </td>
+      </tr>
+    </table>
+
+    <table>
+      <tr>
+        <td style="width:55mm;" class="borde borde-right fs-7 p-1">
+          <strong>De:</strong> {{ periodo_desde }} &nbsp; <strong>a:</strong> {{ periodo_hasta }}
+        </td>
+        <td style="width:55mm;" class="borde borde-right fs-7 p-1">
+          <strong>CÓDIGO USUARIO:</strong> {{ factura.suscriptor.codigo_usuario }}
+        </td>
+        <td style="width:35mm;" class="borde fs-7 p-1">
+          NIT: {{ config.nit_empresa }}
+        </td>
+      </tr>
+    </table>
+
+    <table class="borde">
+      <tr>
+        <td class="fs-7 p-1" style="width:50%;"><strong>USUARIO:</strong> {{ factura.suscriptor.nombre }}</td>
+        <td class="fs-7 p-1" style="width:50%;"><strong>DIRECCIÓN:</strong> {{ factura.suscriptor.direccion }}</td>
+      </tr>
+    </table>
+
+    <table class="borde">
+      <tr>
+        <td class="fs-7 p-1" style="width:33%;">
+          <strong>DOC. USUARIO:</strong> {{ factura.suscriptor.documento|default:"-" }}
+        </td>
+        <td class="fs-7 p-1" style="width:33%;">
+          <strong>FECHA FACTURACIÓN:</strong> {{ factura.fecha_generacion|date:"d/m/Y" }}
+        </td>
+        <td class="fs-7 p-1" style="width:34%;">
+          <strong>TELÉFONO:</strong> {{ factura.suscriptor.telefono|default:"-" }}
+        </td>
+      </tr>
+    </table>
+
+    <table class="borde">
+      <tr>
+        <td class="fs-7 p-1" style="width:33%;">
+          <strong>MEDIDOR:</strong> {{ factura.suscriptor.medidor_id }}
+        </td>
+        <td class="fs-7 p-1" style="width:33%;">
+          <strong>DEUDA ACUMULADA:</strong> ${{ factura.deuda_acumulada|floatformat:0|intcomma }}
+        </td>
+        <td class="fs-7 p-1" style="width:34%;">
+          <strong>EMAIL:</strong> {{ factura.suscriptor.email|default:"-" }}
+        </td>
+      </tr>
+    </table>
+
+    <table class="borde">
+      <tr>
+        <td class="fs-7 p-1" style="width:33%;">
+          <strong>MES DE SERVICIO:</strong> {{ mes_servicio }}
+        </td>
+        <td class="fs-7 p-1" style="width:33%;">
+          <strong>CONSUMO MES. MC:</strong> {{ factura.consumo|floatformat:0 }} m³
+        </td>
+        <td class="fs-7 p-1" style="width:34%;">
+          <strong>ESTRATO:</strong> {{ factura.suscriptor.subsidio|floatformat:0 }}
+        </td>
+      </tr>
+    </table>
+
+    <table class="borde">
+      <tr>
+        <td class="fs-7 p-1" style="width:33%;">
+          <strong>LECTURA ANTERIOR:</strong> {{ lectura_anterior.valor|default:"0"|floatformat:0 }}
+        </td>
+        <td class="fs-7 p-1" style="width:33%;">
+          <strong>LECTURA ACTUAL:</strong> {{ lectura_actual.valor|default:"0"|floatformat:0 }}
+        </td>
+        <td class="fs-7 p-1" style="width:34%;">
+          <strong>DIFERENCIA:</strong> {{ factura.consumo|floatformat:0 }} m³
+        </td>
+      </tr>
+    </table>
+
+    <table class="borde">
+      <tr>
+        <td class="fs-7 p-1" style="width:33%;">
+          <strong>VALOR M.CÚBICO:</strong> ${{ factura.valor_m3|floatformat:0|intcomma }}
+        </td>
+        <td class="fs-7 p-1" style="width:33%;">
+          <strong>VALOR CONSUMO MES:</strong> ${{ factura.valor_consumo_mes|floatformat:0|intcomma }}
+        </td>
+        <td class="fs-7 p-1" style="width:34%;">
+          <strong>SUBSIDIO:</strong> ${{ factura.subsidio_aplicado|floatformat:0|intcomma }}
+        </td>
+      </tr>
+    </table>
+
+    <table class="borde">
+      <tr>
+        <td class="fs-7 p-1" style="width:33%;">
+          <strong>ASEO:</strong> ${{ factura.valor_aseo|floatformat:0|intcomma }}
+        </td>
+        <td class="fs-7 p-1" style="width:33%;">
+          <strong>ABONO A LA DEUDA:</strong> ${{ factura.abono_deuda|floatformat:0|intcomma }}
+        </td>
+        <td class="fs-7 p-1 bold" style="width:34%;">
+          <strong>TOTAL A PAGAR MES:</strong> ${{ factura.monto|floatformat:0|intcomma }}
+        </td>
+      </tr>
+    </table>
+
+    <!-- GRAFICO DE CONSUMO -->
+    {% if grafico_consumo %}
+    <table class="borde mt-2">
+      <tr>
+        <td class="center fs-7 p-1">
+          <strong>GRÁFICO DE CONSUMO — ÚLTIMOS 3 MESES</strong><br>
+          <img src="{{ grafico_consumo }}" class="grafico" alt="Consumo últimos 3 meses">
+        </td>
+      </tr>
+    </table>
+    {% endif %}
+
+    <table class="borde mt-2">
+      <tr>
+        <td class="fs-7 p-1 center" style="width:70%;">
+          {% if config.mensaje_pie %}{{ config.mensaje_pie }}{% endif %}
+          Fecha de corte: {{ factura.fecha_vencimiento|date:"d \d\e F \d\e\l Y" }}
+        </td>
+        <td class="fs-7 p-1 center" style="width:30%;">
+          <strong>T. PAGADO:</strong> ${{ factura.total_pagado|floatformat:0|intcomma }}<br>
+          <strong>NUEVO SALDO:</strong> ${{ factura.nuevo_saldo|floatformat:0|intcomma }}<br>
+          <strong>FECHA PAGO:</strong> {{ factura.fecha_pago|date:"d/m/Y"|default:"_______________" }}
+        </td>
+      </tr>
+    </table>
+
+    <table class="borde">
+      <tr>
+        <td class="fs-7 p-1 center">
+          <strong>FIRMA COBRADOR:</strong> {{ factura.firma_cobrador|default:"_________________________" }}
+        </td>
+      </tr>
+    </table>
+
+    <!-- QR CODE -->
+    {% if qr_data %}
+    <table>
+      <tr>
+        <td class="center fs-7 p-1">
+          <img src="{{ qr_data }}" class="qr" alt="QR"><br>
+          Código QR para pago en línea
+        </td>
+      </tr>
+    </table>
+    {% endif %}
+
+    <!-- ============ LÍNEA DE CORTE ============ -->
+    <div class="corte">--- ORIGINAL EMPRESA · CORTE AQUÍ · COPIA SUSCRIPTOR ---</div>
+
+    <!-- ============ SECCIÓN COPIA (SUSCRIPTOR) ============ -->
+    <table>
+      <tr>
+        <td class="center" style="width:55mm;">
+          {% if logo %}
+          <img src="{{ logo }}" class="logo" alt="Logo">
+          {% endif %}
+        </td>
+        <td class="center bold fs-12">{{ config.nombre_empresa }}</td>
+        <td style="width:40mm;" class="right fs-7 p-1">
+          FACTURACION DIAN<br>
+          FACTURA No: <strong>{{ factura.numero_factura }}</strong>
+        </td>
+      </tr>
+    </table>
+
+    <table>
+      <tr>
+        <td style="width:55mm;" class="borde borde-right fs-7 p-1">
+          <strong>De:</strong> {{ periodo_desde }} &nbsp; <strong>a:</strong> {{ periodo_hasta }}
+        </td>
+        <td style="width:55mm;" class="borde borde-right fs-7 p-1">
+          <strong>CÓDIGO USUARIO:</strong> {{ factura.suscriptor.codigo_usuario }}
+        </td>
+        <td style="width:35mm;" class="borde fs-7 p-1">
+          NIT: {{ config.nit_empresa }}
+        </td>
+      </tr>
+    </table>
+
+    <table class="borde">
+      <tr>
+        <td class="fs-7 p-1" style="width:50%;"><strong>USUARIO:</strong> {{ factura.suscriptor.nombre }}</td>
+        <td class="fs-7 p-1" style="width:50%;"><strong>DIRECCIÓN:</strong> {{ factura.suscriptor.direccion }}</td>
+      </tr>
+    </table>
+
+    <table class="borde">
+      <tr>
+        <td class="fs-7 p-1" style="width:33%;">
+          <strong>DOC. USUARIO:</strong> {{ factura.suscriptor.documento|default:"-" }}
+        </td>
+        <td class="fs-7 p-1" style="width:33%;">
+          <strong>FECHA FACTURACIÓN:</strong> {{ factura.fecha_generacion|date:"d/m/Y" }}
+        </td>
+        <td class="fs-7 p-1" style="width:34%;">
+          <strong>MEDIDOR:</strong> {{ factura.suscriptor.medidor_id }}
+        </td>
+      </tr>
+    </table>
+
+    <table class="borde">
+      <tr>
+        <td class="fs-7 p-1" style="width:33%;">
+          <strong>DEUDA ACUMULADA:</strong> ${{ factura.deuda_acumulada|floatformat:0|intcomma }}
+        </td>
+        <td class="fs-7 p-1" style="width:33%;">
+          <strong>MES DE SERVICIO:</strong> {{ mes_servicio }}
+        </td>
+        <td class="fs-7 p-1" style="width:34%;">
+          <strong>CONSUMO MES. MC:</strong> {{ factura.consumo|floatformat:0 }} m³
+        </td>
+      </tr>
+    </table>
+
+    <table class="borde">
+      <tr>
+        <td class="fs-7 p-1" style="width:33%;">
+          <strong>LECTURA ANTERIOR:</strong> {{ lectura_anterior.valor|default:"0"|floatformat:0 }}
+        </td>
+        <td class="fs-7 p-1" style="width:33%;">
+          <strong>LECTURA ACTUAL:</strong> {{ lectura_actual.valor|default:"0"|floatformat:0 }}
+        </td>
+        <td class="fs-7 p-1" style="width:34%;">
+          <strong>VALOR M.CÚBICO:</strong> ${{ factura.valor_m3|floatformat:0|intcomma }}
+        </td>
+      </tr>
+    </table>
+
+    <table class="borde">
+      <tr>
+        <td class="fs-7 p-1" style="width:33%;">
+          <strong>VALOR CONSUMO MES:</strong> ${{ factura.valor_consumo_mes|floatformat:0|intcomma }}
+        </td>
+        <td class="fs-7 p-1" style="width:33%;">
+          <strong>ASEO:</strong> ${{ factura.valor_aseo|floatformat:0|intcomma }}
+        </td>
+        <td class="fs-7 p-1" style="width:34%;">
+          <strong>SUBSIDIO:</strong> ${{ factura.subsidio_aplicado|floatformat:0|intcomma }}
+        </td>
+      </tr>
+    </table>
+
+    <table class="borde">
+      <tr>
+        <td class="fs-7 p-1" style="width:33%;">
+          <strong>ABONO A LA DEUDA:</strong> ${{ factura.abono_deuda|floatformat:0|intcomma }}
+        </td>
+        <td class="fs-7 p-1 bold" style="width:33%;">
+          <strong>TOTAL A PAGAR MES:</strong> ${{ factura.monto|floatformat:0|intcomma }}
+        </td>
+        <td class="fs-7 p-1 center" style="width:34%;">
+          <strong>T. RECIBIDO:</strong> $_______________<br>
+          <strong>NUEVO SALDO:</strong> $_______________<br>
+          <strong>FECHA PAGO:</strong> _______________
+        </td>
+      </tr>
+    </table>
+
+    <table class="borde">
+      <tr>
+        <td class="fs-7 p-1 center">
+          <strong>FIRMA COBRADOR:</strong> _________________________
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>

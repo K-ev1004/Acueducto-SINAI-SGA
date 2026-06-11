@@ -31,14 +31,27 @@ export const apiFetch = async (
 
 export const obtenerSuscriptores = () => apiFetch('/suscriptores/');
 
-export const crearSuscriptor = (data: { nombre: string; medidor_id: string; direccion?: string }) =>
-    apiFetch('/suscriptores/', { method: 'POST', body: JSON.stringify(data) });
+export const crearSuscriptor = (data: {
+    nombre: string;
+    medidor_id: string;
+    direccion?: string;
+    telefono?: string;
+    email?: string;
+    documento?: string;
+    codigo_usuario?: string;
+    subsidio?: number;
+}) => apiFetch('/suscriptores/', { method: 'POST', body: JSON.stringify(data) });
 
 export const obtenerDetalleSuscriptor = (id: number) => apiFetch(`/suscriptores/${id}/`);
 
 export const actualizarSuscriptor = (id: number, data: Partial<{
     nombre: string;
     direccion: string;
+    telefono: string;
+    email: string;
+    documento: string;
+    codigo_usuario: string;
+    subsidio: number;
     estado_servicio: string;
 }>) => apiFetch(`/suscriptores/${id}/`, { method: 'PUT', body: JSON.stringify(data) });
 
@@ -78,13 +91,25 @@ export const obtenerFacturas = (params?: { estado?: string; medidor_id?: string 
     return apiFetch(`/facturas/${query ? `?${query}` : ''}`);
 };
 
-export const generarFacturas = (data: { mes: number; anio: number; tarifa?: number }) =>
+export const generarFacturas = (data: { periodo_id?: number } = {}) =>
     apiFetch('/facturas/generar/', { method: 'POST', body: JSON.stringify(data) });
 
 export const obtenerPeriodos = () => apiFetch('/periodos/');
 
 export const crearPeriodo = (data: { mes: number; anio: number }) =>
     apiFetch('/periodos/', { method: 'POST', body: JSON.stringify(data) });
+
+export const obtenerPeriodoActual = () => apiFetch('/periodos/actual/');
+
+export const obtenerPlanillaCobro = (params?: { periodo_id?: number }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.periodo_id) queryParams.append('periodo_id', params.periodo_id.toString());
+    const query = queryParams.toString();
+    return apiFetch(`/planilla-cobro/${query ? `?${query}` : ''}`);
+};
+
+export const pagoRapido = (data: { factura_id: number; monto: number; metodo_pago?: string; tipo?: string }) =>
+    apiFetch('/pagos/rapido/', { method: 'POST', body: JSON.stringify(data) });
 
 export const obtenerDashboard = () => apiFetch('/dashboard/');
 
@@ -93,3 +118,59 @@ export const cortarServicio = (id: number) =>
 
 export const reconectarServicio = (id: number) =>
     apiFetch(`/suscriptores/${id}/reconectar/`, { method: 'POST' });
+
+export const descargarPDFFactura = (id: number) => {
+    const url = `${API_URL}/facturas/${id}/pdf/`;
+    const headers = getAuthHeaders();
+    return fetch(url, { headers }).then(async (response) => {
+        if (!response.ok) throw new Error('Error al descargar PDF');
+        const blob = await response.blob();
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `factura_${id}.pdf`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+    });
+};
+
+export const descargarLotePDF = async (periodoId: number) => {
+    const url = `${API_URL}/facturas/lote-pdf/`;
+    const headers = {
+        'Content-Type': 'application/json',
+        ...getAuthHeaders(),
+    };
+    const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ periodo_id: periodoId }),
+    });
+    if (!response.ok) throw new Error('Error al descargar lote PDF');
+    const blob = await response.blob();
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `facturas_periodo_${periodoId}.pdf`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+};
+
+export const obtenerConfiguracion = () => apiFetch('/configuracion/');
+
+export const actualizarConfiguracion = (data: Record<string, unknown>) =>
+    apiFetch('/configuracion/', { method: 'PUT', body: JSON.stringify(data) });
+
+export const enviarFacturaEmail = (id: number) =>
+    apiFetch(`/facturas/${id}/enviar-email/`, { method: 'POST' });
+
+export const descargarReciboPago = (id: number) => {
+    const url = `${API_URL}/pagos/${id}/recibo-pdf/`;
+    const headers = getAuthHeaders();
+    return fetch(url, { headers }).then(async (response) => {
+        if (!response.ok) throw new Error('Error al descargar recibo');
+        const blob = await response.blob();
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `recibo_${id}.pdf`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+    });
+};

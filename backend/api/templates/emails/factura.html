@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 20px auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header { background: #1e3a5f; color: #fff; padding: 24px 32px; text-align: center; }
+    .header h1 { margin: 0; font-size: 20px; }
+    .header p { margin: 4px 0 0; opacity: 0.8; font-size: 14px; }
+    .body { padding: 32px; color: #333; }
+    .body p { margin: 0 0 12px; line-height: 1.5; }
+    .factura-info { background: #f8fafc; border-radius: 8px; padding: 16px; margin: 16px 0; }
+    .factura-info table { width: 100%; border-collapse: collapse; }
+    .factura-info td { padding: 6px 0; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+    .factura-info td:last-child { text-align: right; font-weight: 600; }
+    .total-row td { font-size: 16px; font-weight: bold; border-top: 2px solid #1e3a5f; }
+    .btn { display: inline-block; background: #1e3a5f; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; margin: 16px 0; }
+    .footer { padding: 20px 32px; text-align: center; color: #94a3b8; font-size: 12px; border-top: 1px solid #e2e8f0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Factura de Servicio de Acueducto</h1>
+      <p>Empresa de Servicios Públicos AAA Corposinaí</p>
+    </div>
+    <div class="body">
+      <p>Hola <strong>{{ suscriptor.nombre }}</strong>,</p>
+      <p>Adjuntamos tu factura del período correspondiente.</p>
+
+      <div class="factura-info">
+        <table>
+          <tr><td>Factura N°</td><td>{{ factura.numero_factura }}</td></tr>
+          <tr><td>Medidor</td><td>{{ factura.suscriptor.medidor_id }}</td></tr>
+          <tr><td>Consumo</td><td>{{ factura.consumo|floatformat:0 }} m³</td></tr>
+          <tr><td>Total a Pagar</td><td>{{ monto_formato }}</td></tr>
+          <tr><td>Fecha de Vencimiento</td><td>{{ fecha_vencimiento }}</td></tr>
+          <tr class="total-row"><td>Estado</td><td>{{ factura.get_estado_display }}</td></tr>
+        </table>
+      </div>
+
+      <p style="text-align:center;">
+        <a href="#" class="btn">Descargar Factura en PDF</a>
+      </p>
+
+      <p style="font-size:13px; color:#64748b;">
+        También puedes acercarte a nuestras oficinas a pagar en efectivo.
+        Recuerda que tienes 15 días hábiles para realizar el pago.
+      </p>
+    </div>
+    <div class="footer">
+      Empresa de Servicios Públicos AAA Corposinaí<br>
+      Paga a tiempo tu factura y no te expongas al cobro por reconexión.
+    </div>
+  </div>
+</body>
+</html>

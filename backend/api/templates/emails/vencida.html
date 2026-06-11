@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 20px auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header { background: #dc2626; color: #fff; padding: 24px 32px; text-align: center; }
+    .header h1 { margin: 0; font-size: 20px; }
+    .header p { margin: 4px 0 0; opacity: 0.8; font-size: 14px; }
+    .body { padding: 32px; color: #333; }
+    .body p { margin: 0 0 12px; line-height: 1.5; }
+    .info-box { background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin: 16px 0; }
+    .info-box table { width: 100%; border-collapse: collapse; }
+    .info-box td { padding: 6px 0; border-bottom: 1px solid #fecaca; font-size: 14px; }
+    .info-box td:last-child { text-align: right; font-weight: 600; }
+    .warning { background: #fef2f2; border: 1px solid #fee2e2; border-radius: 8px; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #991b1b; }
+    .footer { padding: 20px 32px; text-align: center; color: #94a3b8; font-size: 12px; border-top: 1px solid #e2e8f0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Factura Vencida</h1>
+      <p>Tu factura de acueducto está pendiente de pago</p>
+    </div>
+    <div class="body">
+      <p>Hola <strong>{{ suscriptor.nombre }}</strong>,</p>
+      <p>Te informamos que tu factura se encuentra <strong>vencida</strong>. Regulariza tu situación a la brevedad para evitar la suspensión del servicio.</p>
+
+      <div class="info-box">
+        <table>
+          <tr><td>Factura N°</td><td>{{ factura.numero_factura }}</td></tr>
+          <tr><td>Medidor</td><td>{{ factura.suscriptor.medidor_id }}</td></tr>
+          <tr><td>Total Adeudado</td><td>{{ monto_formato }}</td></tr>
+        </table>
+      </div>
+
+      <div class="warning">
+        <strong>⚠ Importante:</strong> Si acumulas 3 meses consecutivos sin pago,
+        tu servicio de acueducto será suspendido y deberás pagar un cargo de reconexión.
+      </div>
+    </div>
+    <div class="footer">
+      Empresa de Servicios Públicos AAA Corposinaí
+    </div>
+  </div>
+</body>
+</html>

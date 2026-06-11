@@ -1,17 +1,18 @@
 from rest_framework import serializers
-from .models import Suscriptor, Lectura, PeriodoLectura, Factura, Pago
+from .models import Suscriptor, Lectura, PeriodoLectura, Factura, Pago, ConfiguracionGeneral
 
 
 class LecturaSerializer(serializers.ModelSerializer):
     suscriptor_nombre = serializers.CharField(source='suscriptor.nombre', read_only=True)
     suscriptor_medidor_id = serializers.CharField(source='suscriptor.medidor_id', read_only=True)
     lecturista_nombre = serializers.CharField(source='lecturista.username', read_only=True)
+    periodo = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = Lectura
         fields = [
             'id', 'suscriptor_nombre', 'suscriptor_medidor_id',
-            'valor', 'fecha_lectura', 'lecturista_nombre'
+            'valor', 'fecha_lectura', 'lecturista_nombre', 'periodo'
         ]
 
 
@@ -22,7 +23,8 @@ class SuscriptorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Suscriptor
         fields = [
-            'id', 'nombre', 'medidor_id', 'direccion',
+            'id', 'nombre', 'medidor_id', 'direccion', 'telefono',
+            'email', 'documento', 'codigo_usuario', 'subsidio',
             'estado_servicio', 'deuda_total', 'creado_en',
             'cantidad_facturas_pendientes'
         ]
@@ -40,7 +42,8 @@ class SuscriptorDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Suscriptor
         fields = [
-            'id', 'nombre', 'medidor_id', 'direccion',
+            'id', 'nombre', 'medidor_id', 'direccion', 'telefono',
+            'email', 'documento', 'codigo_usuario', 'subsidio',
             'estado_servicio', 'mes_deuda_continua', 'creado_en',
             'deuda_total', 'lecturas', 'facturas', 'pagos'
         ]
@@ -57,17 +60,31 @@ class SuscriptorDetailSerializer(serializers.ModelSerializer):
 class FacturaSerializer(serializers.ModelSerializer):
     suscriptor_nombre = serializers.CharField(source='suscriptor.nombre', read_only=True)
     suscriptor_medidor_id = serializers.CharField(source='suscriptor.medidor_id', read_only=True)
+    suscriptor_email = serializers.EmailField(source='suscriptor.email', read_only=True)
     periodo_info = serializers.CharField(source='periodo.__str__', read_only=True)
     saldo_pendiente = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
 
     class Meta:
         model = Factura
         fields = [
-            'id', 'suscriptor_nombre', 'suscriptor_medidor_id',
-            'monto', 'monto_pagado', 'abonos', 'consumo',
-            'estado', 'fecha_generacion', 'periodo_info',
-            'saldo_pendiente'
+            'id', 'numero_factura', 'suscriptor_nombre', 'suscriptor_medidor_id',
+            'suscriptor_email', 'monto', 'monto_pagado', 'abonos', 'consumo',
+            'valor_m3', 'valor_aseo', 'valor_consumo_mes', 'subsidio_aplicado',
+            'estado', 'fecha_generacion', 'fecha_vencimiento',
+            'deuda_acumulada', 'abono_deuda', 'fecha_pago',
+            'firma_cobrador', 'total_pagado', 'nuevo_saldo', 'email_enviado',
+            'periodo_info', 'saldo_pendiente'
         ]
+
+
+class FacturaDetailSerializer(serializers.ModelSerializer):
+    suscriptor = SuscriptorSerializer(read_only=True)
+    periodo_info = serializers.CharField(source='periodo.__str__', read_only=True)
+    saldo_pendiente = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+
+    class Meta:
+        model = Factura
+        fields = '__all__'
 
 
 class PagoSerializer(serializers.ModelSerializer):
@@ -79,8 +96,8 @@ class PagoSerializer(serializers.ModelSerializer):
         model = Pago
         fields = [
             'id', 'suscriptor_nombre', 'suscriptor_medidor_id',
-            'monto', 'tipo', 'metodo_pago', 'comentario',
-            'registrado_por_nombre', 'fecha_pago'
+            'monto', 'tipo', 'metodo_pago', 'numero_recibo',
+            'comentario', 'registrado_por_nombre', 'fecha_pago'
         ]
 
 
@@ -103,6 +120,12 @@ class PeriodoLecturaSerializer(serializers.ModelSerializer):
         if obj.estado == 'CERRADO':
             return FacturaSerializer(obj.facturas.all()[:5], many=True).data
         return []
+
+
+class ConfiguracionGeneralSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConfiguracionGeneral
+        fields = '__all__'
 
 
 class DashboardSerializer(serializers.Serializer):
