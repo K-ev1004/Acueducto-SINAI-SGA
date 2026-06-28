@@ -1,6 +1,6 @@
 # Sinai SGA — Documentación
 
-Sistema de Gestión de Acueducto. Backend Django 5.0 + DRF + PostgreSQL, Frontend React 18 + TypeScript + Vite.
+Sistema de Gestión de Acueducto. Backend Django 6.0 + DRF + PostgreSQL (monolito modular, 7 apps), Frontend React 18 + TypeScript + Vite.
 
 ---
 

@@ -1,5 +1,16 @@
 # Modelos de Datos
 
+Los modelos están distribuidos en 5 apps Django dentro de `backend/apps/` y
+se mapean a tablas legacy mediante `db_table`:
+
+| App | Modelo | Tabla real |
+|-----|--------|------------|
+| `suscriptores` | Suscriptor | `api_suscriptor` |
+| `lecturas` | PeriodoLectura, Lectura | `api_periodolectura`, `api_lectura` |
+| `facturas` | Factura | `api_factura` |
+| `pagos` | Pago | `api_pago` |
+| `configuracion` | ConfiguracionGeneral | `api_configuraciongeneral` |
+
 ## Suscriptor
 
 | Campo | Tipo | Descripción |

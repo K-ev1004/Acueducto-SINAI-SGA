@@ -40,6 +40,10 @@ python manage.py reset_all.py  # Crea estructura + datos de ejemplo
 python manage.py runserver 0.0.0.0:8000
 ```
 
+> El backend es un **monolito modular**: 7 apps Django bajo `apps/` en lugar de
+> una app `api/` monolítica. Los comandos de gestión (`reset_all.py`, `migrar_excel.py`)
+> están en `apps/lecturas/management/commands/` y `apps/configuracion/management/commands/`.
+
 ## 4. Frontend
 
 ```bash

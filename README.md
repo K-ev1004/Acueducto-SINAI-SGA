@@ -46,3 +46,5 @@ Ver la documentación completa en [`docs/index.md`](docs/index.md):
 - [Endpoints de la API](docs/endpoints-api.md)
 - [Modelos de datos](docs/modelos-de-datos.md)
 - [Seguridad](SECURITY.md)
+
+(agregar paginacion en usuarios, agregar barra de carga en imprimir pdf para conocer)

@@ -1,5 +1,20 @@
 # Endpoints de la API
 
+La API se compone de ~20 endpoints organizados en 7 módulos de Django
+(`apps/`) montados en `core/urls.py` bajo `/api/`.
+
+## Filtros comunes
+
+Los endpoints listables soportan filtros por query params:
+
+| Endpoint | Parámetros |
+|----------|-------------|
+| `/api/lecturas/` | `?medidor_id=MED001` |
+| `/api/lecturas/historial/` | `?mes=3&anio=2026&medidor_id=MED001` |
+| `/api/facturas/` | `?estado=PENDIENTE&medidor_id=MED001&periodo_id=1` |
+| `/api/pagos/historial/` | `?suscriptor_id=1&fecha_desde=2026-01-01&fecha_hasta=2026-12-31` |
+| `/api/planilla-cobro/` | `?mes=3&anio=2026` |
+
 ## Autenticación
 
 | Método | Endpoint | Descripción | Permiso |

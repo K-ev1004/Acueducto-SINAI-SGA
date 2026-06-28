@@ -90,7 +90,7 @@ Día 26 ────────────────────────
 - Medidor, fechas, lecturas anterior y actual
 - Consumo m³, valor m³, valor consumo mes
 - Cargo aseo, subsidio aplicado, abono a la deuda
-- **Gráfico de consumo de los últimos 3 meses** (matplotlib, barras)
+- **Gráfico de consumo de los últimos 3 meses** (matplotlib, barras)(corregir a 4 meses)
 - Total a pagar mes, deuda acumulada
 - Fecha de vencimiento, T. pagado, nuevo saldo
 - Firma del cobrador
