@@ -15,7 +15,10 @@ django.setup()
 
 from django.contrib.auth.models import User, Group
 from django.core.management import call_command
-from api.models import Suscriptor, PeriodoLectura, Lectura, Factura, Pago
+from apps.suscriptores.models import Suscriptor
+from apps.lecturas.models import PeriodoLectura, Lectura
+from apps.facturas.models import Factura
+from apps.pagos.models import Pago
 from datetime import datetime
 
 # =============================================================================

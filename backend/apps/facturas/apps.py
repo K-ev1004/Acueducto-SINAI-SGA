@@ -1,0 +1,8 @@
+from django.apps import AppConfig
+
+
+class FacturasConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'apps.facturas'
+    label = 'facturas'
+    verbose_name = 'Facturas y PDFs'

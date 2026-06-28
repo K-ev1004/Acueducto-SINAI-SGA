@@ -42,7 +42,13 @@ INSTALLED_APPS = [
     'corsheaders',
     'drf_spectacular',
     'django_q',
-    'api',
+    'apps.suscriptores',
+    'apps.lecturas',
+    'apps.facturas',
+    'apps.pagos',
+    'apps.configuracion',
+    'apps.usuarios',
+    'apps.dashboard',
 ]
 
 # =============================================================================

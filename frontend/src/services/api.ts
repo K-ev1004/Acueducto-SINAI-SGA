@@ -76,17 +76,21 @@ export const registrarPago = (data: {
     factura_id?: number;
 }) => apiFetch('/pagos/', { method: 'POST', body: JSON.stringify(data) });
 
-export const obtenerHistorialPagos = (params?: { medidor_id?: string }) => {
+export const obtenerHistorialPagos = (params?: { medidor_id?: string; mes?: number; anio?: number }) => {
     const queryParams = new URLSearchParams();
     if (params?.medidor_id) queryParams.append('medidor_id', params.medidor_id);
+    if (params?.mes) queryParams.append('mes', params.mes.toString());
+    if (params?.anio) queryParams.append('anio', params.anio.toString());
     const query = queryParams.toString();
     return apiFetch(`/pagos/historial/${query ? `?${query}` : ''}`);
 };
 
-export const obtenerFacturas = (params?: { estado?: string; medidor_id?: string }) => {
+export const obtenerFacturas = (params?: { estado?: string; medidor_id?: string; mes?: number; anio?: number }) => {
     const queryParams = new URLSearchParams();
     if (params?.estado) queryParams.append('estado', params.estado);
     if (params?.medidor_id) queryParams.append('medidor_id', params.medidor_id);
+    if (params?.mes) queryParams.append('mes', params.mes.toString());
+    if (params?.anio) queryParams.append('anio', params.anio.toString());
     const query = queryParams.toString();
     return apiFetch(`/facturas/${query ? `?${query}` : ''}`);
 };

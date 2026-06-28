@@ -60,7 +60,10 @@ for u in User.objects.all():
 
 print()
 print('=== CONTADORES ===')
-from api.models import Suscriptor, Lectura, Factura, Pago, PeriodoLectura
+from apps.suscriptores.models import Suscriptor
+from apps.lecturas.models import PeriodoLectura, Lectura
+from apps.facturas.models import Factura
+from apps.pagos.models import Pago
 print(f'  Suscriptores: {Suscriptor.objects.count()}')
 print(f'  Lecturas:     {Lectura.objects.count()}')
 print(f'  Facturas:     {Factura.objects.count()}')

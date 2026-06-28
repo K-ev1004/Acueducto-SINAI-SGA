@@ -1,0 +1,8 @@
+from django.apps import AppConfig
+
+
+class LecturasConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'apps.lecturas'
+    label = 'lecturas'
+    verbose_name = 'Lecturas y Períodos'

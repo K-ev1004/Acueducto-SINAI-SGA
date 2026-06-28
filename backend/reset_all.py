@@ -17,7 +17,10 @@ import django
 django.setup()
 
 from django.contrib.auth.models import User, Group
-from api.models import Suscriptor, Lectura, PeriodoLectura, Factura, Pago
+from apps.suscriptores.models import Suscriptor
+from apps.lecturas.models import PeriodoLectura, Lectura
+from apps.facturas.models import Factura
+from apps.pagos.models import Pago
 from datetime import datetime
 import random
 

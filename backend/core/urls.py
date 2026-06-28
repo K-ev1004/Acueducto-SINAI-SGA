@@ -39,5 +39,11 @@ urlpatterns = [
     path('api/', api_root, name='api-root'),
 
     # API Routes
-    path('api/', include('api.urls')),
+    path('api/', include('apps.suscriptores.urls')),
+    path('api/', include('apps.lecturas.urls')),
+    path('api/', include('apps.facturas.urls')),
+    path('api/', include('apps.pagos.urls')),
+    path('api/', include('apps.configuracion.urls')),
+    path('api/', include('apps.usuarios.urls')),
+    path('api/', include('apps.dashboard.urls')),
 ]
